@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import './index.css';
 import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
