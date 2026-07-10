@@ -18,6 +18,7 @@ graph TD
     H --> I[Phase 9: Recharts 대시보드 및 레이아웃 통합]
     I --> J[Phase 10: 리액트 훅 리팩토링 및 렌더링 최적화]
     J --> K[Phase 11: 월별 정산 및 내역 클릭 수정/삭제 고도화]
+    K --> L[Phase 12: Vercel 배포 및 빌드 TypeScript 오류 해결]
 ```
 
 ---
@@ -93,9 +94,18 @@ graph TD
   * 가계부 목록의 특정 내역을 클릭하면 좌측 폼으로 기존 데이터가 로드되어 수정 및 삭제를 진행할 수 있도록 연동.
   * .env 파일 경로 문제 디버깅 및 DB RLS 비활성화에 따른 익명 테스트 Fallback 세션 제공.
 * **진행 작업**:
-  * **.env 디버깅**: `VITE_SUPABASE_URL` 끝에 붙어있던 `/rest/v1/`로 인한 중복 URI 결합 404 에러를 제거하고 순수 호스트 URL로 정정.
+  * **.env 디버깅**: `VITE_SUPABASE_URL` 끝에 붙어있던 `/rest/v1/`로 인한 중복 URI 결합 404 에러를 제거하고 UX/개발 생산성을 위해 순수 호스트 URL로 정정.
   * **우회 세션**: RLS가 해제되어 있으나 `user_id` 외래키 constraints를 만족하기 위해, 세션이 없는 경우 사전에 생성해 둔 테스트 유저 UUID(`3198e1f1-8aee-41a2-abbe-c7e881a82a97`)를 Fallback으로 자동 설정.
   * **App.tsx 정산 필터링**: 정산 기준(`settlementRule`) 및 활성화된 월(`selectedMonth`) 상태를 정의하고 범위 내 거래 내역(`filteredTransactions`)을 산출하여 대시보드와 차트 및 목록에 일괄 반응형 연동.
   * **결산 마크다운 보고서**: 선택된 기간의 정산 결과(수입/지출 총액, 잔액, 카테고리별 비중 테이블, 상세 거래 리스트)를 마크다운 텍스트로 즉석 렌더링 및 클립보드 원클릭 복사(Copy) 기능 제공.
   * **내역 수정/삭제 폼 바인딩**: 내역 테이블 행 클릭 시 `editingTransaction` 상태로 저장하고 파란색 링 테두리로 Highlight 처리. `TransactionForm`은 `editingTransaction` 값 감지 시 '수정 완료' 모드로 분기하여 `updateTransaction` 및 `deleteTransaction` API 실행 후 리패치 연동.
+
+### 12단계: Vercel 프로덕션 배포 및 빌드(TypeScript) 디버깅
+* **프로젝트 문제 해결**: Vercel 연동 배포 시 `tsc` 단계에서 발생하는 React 미사용 임포트 경고(TS6133), Vite `import.meta.env` 타입 미인식(TS2339), Node.js `process` 미정의(TS2580), Supabase DB 스키마 충돌로 인한 CRUD API `never` 타입 오류(TS2322, TS2345) 해결.
+* **진행 작업**:
+  * **App.tsx**: 사용하지 않는 `React` 임포트 제거.
+  * **vite-env.d.ts 생성**: `/// <reference types="vite/client" />`를 포함한 타입 정의 파일을 추가해 `import.meta.env` 에러 해결.
+  * **supabaseClient.ts**: Node.js `process` 확인 코드를 완전히 제거하고 Vite의 `import.meta.env` 호출로 단순화 및 최적화. `createClient` 호출 시 타입 선언 마찰을 일으키던 제네릭 `<Database>` 파라미터를 걷어내어 컴파일 빌드 패스 완료.
+  * **vercel.json 작성**: SPA 라우팅 지원을 위해 Vercel 리라이트 룰 구성 파일 생성.
+
 

@@ -104,3 +104,30 @@ npm run dev
 ```bash
 npm run build
 ```
+
+---
+
+## 🛠️ Vercel 배포 및 빌드 문제 해결 기록
+
+Vercel에 배포하여 빌드를 수행할 때 발생했던 TypeScript 컴파일 오류들과 해결 방식에 대한 기록입니다.
+
+### 1. `React` 미사용 경고 오류 (`App.tsx`)
+* **오류 메시지**: `error TS6133: 'React' is declared but its value is never read.`
+* **원인**: 최신 Vite + React 18 템플릿 환경에서는 JSX 컴파일러가 자동 변환되므로 명시적인 `import React`가 필요하지 않습니다. 사용하지 않는 React 임포트 선언이 남아 컴파일러 경고(에러)가 되었습니다.
+* **해결 방법**: `src/App.tsx` 파일 최상단의 `import React`를 제거하고 필요한 훅들만 구조분해할당으로 가져오도록 수정했습니다.
+
+### 2. Vite 환경 변수 타입 선언 누락 (`supabaseClient.ts`)
+* **오류 메시지**: `error TS2339: Property 'env' does not exist on type 'ImportMeta'.`
+* **원인**: TypeScript 컴파일러가 Vite 전역 객체인 `import.meta.env`를 인식하지 못하여 발생한 에러입니다.
+* **해결 방법**: `src/vite-env.d.ts` 파일을 신규 생성하고 `/// <reference types="vite/client" />`를 작성하여 Vite의 타입 정의를 TypeScript 컴파일러에 전달했습니다.
+
+### 3. Node.js `process` 미정의 오류 (`supabaseClient.ts`)
+* **오류 메시지**: `error TS2580: Cannot find name 'process'.`
+* **원인**: 브라우저 런타임 및 Vite 빌드 빌더 환경에서는 Node.js의 글로벌 객체인 `process`가 존재하지 않습니다. 기존 크래시 디버깅 용도로 포함되었던 `process.env` 우회 체크 코드가 컴파일 오류를 야기했습니다.
+* **해결 방법**: `process.env` 관련 조건문과 함수 로직을 걷어내고, Vite의 표준 환경 변수 인터페이스인 `import.meta.env`로 통합하여 코드를 단순화했습니다.
+
+### 4. Supabase DB 스키마 Generic 타입 충돌 (`transactionService.ts`)
+* **오류 메시지**: `error TS2322: Type '...' is not assignable to type 'never'.`
+* **원인**: `supabaseClient`를 생성할 때 임의로 선언된 `Database` 제네릭 스키마를 전달하였으나, 실제 소스 코드에서 API 파라미터로 넘기는 타입 구조와 DB 명세 정의 사이에 미세한 속성 불일치가 발생해 Supabase SDK 내부적으로 해당 테이블의 CRUD 작업을 `never` 타입으로 판정했습니다.
+* **해결 방법**: 서비스 레이어의 CRUD 함수들이 이미 결과 데이터를 원하는 인터페이스 타입으로 개별 캐스팅(`as Transaction`, `as Category[]` 등)하고 있으므로, 불필요한 스키마 정의 마찰을 피하기 위해 `createClient<Database>`에서 제네릭 `<Database>`를 걷어내어 컴파일을 정상화시켰습니다.
+
